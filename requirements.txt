@@ -1,9 +1,9 @@
 streamlit
 yfinance
 prophet
-tensorflow
+tensorflow-cpu
 scikit-learn
 pandas
-numpy
+numpy<2.0.0
 plotly
 matplotlib
