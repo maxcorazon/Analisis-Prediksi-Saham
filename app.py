@@ -44,18 +44,30 @@ tanggal_akhir = datetime(2026, 3, 31)
 # Mengambil data saham 
 @st.cache_data
 def ambil_data_saham(kode, waktu_mulai, waktu_akhir):
-    data = yf.download(kode, start=waktu_mulai, end=waktu_akhir)
-    if isinstance(data.columns, pd.MultiIndex):
-        data.columns = data.columns.droplevel(1)
-    data.reset_index(inplace=True)
-    return data
+    import os
+    try:
+        data = yf.download(kode, start=waktu_mulai, end=waktu_akhir, progress=False)
+        if data.empty:
+            raise ValueError("Data kosong dari Yahoo Finance")
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.droplevel(1)
+        data.reset_index(inplace=True)
+        return data
+    except Exception as e:
+        # Jika gagal tarik data live, gunakan CSV Cadangan
+        st.warning("⚠️ Menggunakan data cadangan offline. (Koneksi Yahoo Finance sedang sibuk/Rate Limit).")
+        if os.path.exists("bbca_cadangan.csv"):
+            data_csv = pd.read_csv("bbca_cadangan.csv")
+            data_csv['Date'] = pd.to_datetime(data_csv['Date'])
+            return data_csv
+        return pd.DataFrame()
 
 # Menjalankan fungsi pengambilan data
 data_saham = ambil_data_saham(KODE_SAHAM, tanggal_mulai, tanggal_akhir)
 
 # Cek apakah data berhasil diambil
 if data_saham.empty:
-    st.error("Gagal menarik data. Pastikan koneksi internet aktif.")
+    st.error("Gagal menarik data dan data cadangan tidak ditemukan.")
     st.stop()
 
 # Visualisasi Data Historis
