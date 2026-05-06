@@ -1,0 +1,23 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables / secrets
+.env
+.streamlit/secrets.toml
+
+# Dokumen besar (tidak diperlukan untuk deployment)
+pedoman_penulisan.pdf
+hasil_konversi/
