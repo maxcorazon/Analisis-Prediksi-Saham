@@ -6,12 +6,12 @@ import plotly.graph_objects as go
 
 def pred_prophet(data_saham, hari_kedepan=90):
     
-    # Menyiapkan data sesuai format Prophet
+    # Menyiapkan data
     df_prophet = data_saham[['Date', 'Close']].copy()
     df_prophet.rename(columns={'Date': 'ds', 'Close': 'y'}, inplace=True)
     df_prophet['ds'] = df_prophet['ds'].dt.tz_localize(None)
 
-    # Menambahkan fitur teknikal sebagai regressor tambahan
+    # Menambahkan fitur teknikal sebagai regressor 
     # Moving Average 20 hari — menangkap tren jangka pendek
     df_prophet['ma20'] = df_prophet['y'].rolling(window=20, min_periods=1).mean()
     # Moving Average 50 hari — menangkap tren jangka menengah
@@ -22,10 +22,8 @@ def pred_prophet(data_saham, hari_kedepan=90):
     df_train = df_prophet.iloc[:split_index].copy()
     df_test = df_prophet.iloc[split_index:].copy()
 
-    # ============================================================
-    # HYPERPARAMETER TUNING: Memilih parameter terbaik secara otomatis
-    # Menguji beberapa kombinasi dan memilih MAPE terendah pada test
-    # ============================================================
+    # Hyperparameter tuning untuk memilih parameter terbaik secara otomatis
+    # Mencari nilai MAPE terendah pada data test
     param_grid = [
         {'cps': 0.3, 'sps': 10.0, 'sm': 'multiplicative', 'nc': 40, 'cr': 0.9},
         {'cps': 0.5, 'sps': 10.0, 'sm': 'multiplicative', 'nc': 50, 'cr': 0.9},
@@ -65,17 +63,16 @@ def pred_prophet(data_saham, hari_kedepan=90):
         model.add_seasonality(name='quarterly', period=91.25, fourier_order=8)
         model.add_country_holidays(country_name='ID')
         
-        # Tambahkan regressor teknikal
+        # Regressor teknikal
         model.add_regressor('ma20')
         model.add_regressor('ma50')
         
         model.fit(df_train)
         
-        # Buat future dataframe dengan regressor
+        # Membuat DataFrame masa depan dengan regressor
         future = model.make_future_dataframe(periods=total_periods, freq='B')
         
         # Untuk future dates, gunakan nilai MA terakhir yang tersedia
-        # Merge MA values dari data historis
         ma_data = df_prophet[['ds', 'ma20', 'ma50']].copy()
         future = future.merge(ma_data, on='ds', how='left')
         
@@ -95,10 +92,10 @@ def pred_prophet(data_saham, hari_kedepan=90):
                 best_forecast = forecast
                 best_params = params
     
-    # Gunakan model terbaik
+    # Menggunakan model terbaik
     forecast = best_forecast
 
-    # Hitung Metrik Evaluasi pada data TEST saja (20%)
+    # Menghitung Evaluasi pada data test
     prediksi_test = forecast[['ds', 'yhat']].merge(df_test[['ds', 'y']], on='ds', how='inner')
     
     y_asli = prediksi_test['y']
@@ -110,7 +107,7 @@ def pred_prophet(data_saham, hari_kedepan=90):
 
     metrik = {'MAE': mae, 'RMSE': rmse, 'MAPE': mape}
 
-    # Pisahkan forecast berdasarkan periode
+    # Memisahkan forecast berdasarkan periode
     forecast_train = forecast[forecast['ds'] <= last_train_date]
     forecast_test_period = forecast[(forecast['ds'] > last_train_date) & (forecast['ds'] <= last_actual_date)]
     forecast_future = forecast[forecast['ds'] > last_actual_date]
@@ -118,13 +115,13 @@ def pred_prophet(data_saham, hari_kedepan=90):
     # Visualisasi Grafik
     grafik = go.Figure()
     
-    # Data Training (Aktual)
+    # Data Training
     grafik.add_trace(go.Scatter(
         x=df_train['ds'], y=df_train['y'],
         name='Data Training (80%)', line_color='blue'
     ))
     
-    # Data Test (Aktual)
+    # Data Test
     grafik.add_trace(go.Scatter(
         x=df_test['ds'], y=df_test['y'],
         name='Data Test Aktual (20%)', line_color='green'
@@ -186,13 +183,13 @@ def pred_prophet(data_saham, hari_kedepan=90):
     )
 
     grafik.update_layout(
-        title=f"Prediksi Prophet (Best: cps={best_params['cps']}, {best_params['sm']}, MAPE={mape:.2f}%)", 
+        title="Prediksi Prophet (Hyperparameter Tuning, Moving Average Regressors, Holidays & Business Days)", 
         xaxis_title="Tanggal", 
         yaxis_title="Harga (Rp)",
         template="plotly_white"
     )
     
-    # Return: histori test (untuk tabel pembuktian)
+    # Histori Test
     histori = prediksi_test[['ds', 'y', 'yhat']].copy()
     
     return forecast_future, metrik, grafik, histori

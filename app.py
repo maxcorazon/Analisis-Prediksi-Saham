@@ -7,7 +7,6 @@ from prediksi_prophet import pred_prophet
 from prediksi_lstm import pred_lstm
 
 # Cache hasil model agar tidak ditraining ulang setiap page refresh
-# Model hanya dilatih ulang jika hari_kedepan berubah (slider)
 @st.cache_data(show_spinner=False)
 def cached_pred_prophet(_data_saham, hari_kedepan):
     return pred_prophet(_data_saham, hari_kedepan=hari_kedepan)
@@ -55,7 +54,7 @@ def ambil_data_saham(kode, waktu_mulai, waktu_akhir):
         return data
     except Exception as e:
         # Jika gagal tarik data live, gunakan CSV Cadangan
-        st.warning("⚠️ Menggunakan data cadangan offline. (Koneksi Yahoo Finance sedang sibuk/Rate Limit).")
+        st.warning("Menggunakan data offline. Koneksi Yahoo limit")
         if os.path.exists("bbca_cadangan.csv"):
             data_csv = pd.read_csv("bbca_cadangan.csv")
             data_csv['Date'] = pd.to_datetime(data_csv['Date'])
@@ -89,7 +88,7 @@ with kolom_kanan:
         line_color='deepskyblue'
     ))
     grafik.update_layout(
-        title=f"Grafik Historis {KODE_SAHAM} ({jumlah_tahun} Tahun Terakhir)", 
+        title=f"Grafik Historis {KODE_SAHAM} (2016-2026)", 
         template="plotly_white",
         xaxis_title="Tanggal",
         yaxis_title="Harga (Rupiah)"
@@ -99,12 +98,12 @@ with kolom_kanan:
 # Hasil Prediksi dan Evaluasi Model
 st.divider()
 st.subheader("Hasil Prediksi Machine Learning")
-st.info("📊 Evaluasi menggunakan **Train/Test Split 80:20** — Model dilatih dengan 80% data awal dan diuji pada 20% data terakhir untuk memastikan metrik yang valid dan tidak terjadi data leakage.")
+st.info("Evaluasi model menggunakan 80% data awal dan 20% data terakhir untuk memastikan akurasi yang valid.")
 
 tab_prophet, tab_lstm = st.tabs(["Metode Facebook Prophet", "Metode LSTM"])
 
 with tab_prophet:
-    st.write(f"Memproses prediksi dengan Facebook Prophet (Prediksi **{hari_prediksi} Hari** Kedepan)...")
+    st.write(f"Memproses prediksi dengan Facebook Prophet (Prediksi **{hari_prediksi} hari** ke depan)")
     
     # Memanggil model dengan spinner
     with st.spinner("Melatih model Prophet..."):
@@ -142,10 +141,10 @@ with tab_prophet:
     st.dataframe(tabel_masa_depan, hide_index=True)
 
 with tab_lstm:
-    st.write(f"Memproses Deep Learning LSTM (Prediksi **{hari_prediksi} Hari** Kedepan)...")
+    st.write(f"Memproses Deep Learning LSTM (Prediksi **{hari_prediksi}** hari ke depan)")
     
     # Memanggil model dengan spinner
-    with st.spinner("Melatih model LSTM... (ini bisa memakan waktu beberapa menit)"):
+    with st.spinner("Melatih model LSTM... (memakan waktu beberapa menit)"):
         hasil_future_lstm, metrik_lstm, grafik_lstm, histori_lstm = cached_pred_lstm(data_saham, hari_prediksi)
     
     st.plotly_chart(grafik_lstm, use_container_width=True)

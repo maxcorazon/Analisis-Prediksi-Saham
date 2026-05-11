@@ -10,7 +10,7 @@ from tensorflow.keras.optimizers import Adam
 import plotly.graph_objects as go
 
 def pred_lstm(data_saham, hari_kedepan=90):
-    # Set random seed untuk reproducibility (hasil konsisten setiap kali dijalankan)
+    # Set random seed untuk hasil konsisten setiap kali dijalankan
     np.random.seed(42)
     tf.random.set_seed(42)
 
@@ -31,7 +31,7 @@ def pred_lstm(data_saham, hari_kedepan=90):
     X, y = np.array(X), np.array(y)
     X = np.reshape(X, (X.shape[0], X.shape[1], 1))
 
-    # Train/Test Split 80:20 (Menghindari Data Leakage)
+    # Train/Test Split 80:20 (Mencegah Kebocoran Data)
     split_index = int(len(X) * 0.8)
     X_train, X_test = X[:split_index], X[split_index:]
     y_train, y_test = y[:split_index], y[split_index:]
@@ -41,11 +41,11 @@ def pred_lstm(data_saham, hari_kedepan=90):
     
     # Layer 1: Bidirectional LSTM + Dropout (Membaca pola dari dua arah)
     model.add(Bidirectional(LSTM(units=50, return_sequences=True), input_shape=(X.shape[1], 1)))
-    model.add(Dropout(0.2)) # Membuang 20% agar tidak overfitting
+    model.add(Dropout(0.2)) # Membuang data 20% agar tidak terjadi overfitting
     
     # Layer 2: LSTM + Dropout (Memperdalam Model)
     model.add(LSTM(units=50, return_sequences=False))
-    model.add(Dropout(0.2))
+    model.add(Dropout(0.2)) # Membuang data 20% agar tidak terjadi overfitting
     
     # Layer Output: Menebak 1 harga
     model.add(Dense(units=1))
@@ -63,22 +63,22 @@ def pred_lstm(data_saham, hari_kedepan=90):
               validation_data=(X_test, y_test),
               callbacks=[early_stop, reduce_lr], verbose=0)
 
-    # Prediksi Data Test (Untuk Metrik Evaluasi — HANYA data test)
+    # Prediksi Data Test (Untuk Evaluasi)
     prediksi_test_scaled = model.predict(X_test, verbose=0)
     prediksi_test = scaler.inverse_transform(prediksi_test_scaled)
     y_test_asli = scaler.inverse_transform(y_test.reshape(-1, 1))
 
-    # Prediksi Data Training (Untuk Visualisasi saja)
+    # Prediksi Data Training (Untuk Visualisasi)
     prediksi_train_scaled = model.predict(X_train, verbose=0)
     prediksi_train = scaler.inverse_transform(prediksi_train_scaled)
 
-    # Hitung MAE, RMSE, MAPE pada data TEST saja (bukan data training)
+    # Menghitung MAE, RMSE, MAPE pada data test
     mae = mean_absolute_error(y_test_asli, prediksi_test)
     rmse = np.sqrt(mean_squared_error(y_test_asli, prediksi_test))
     mape = np.mean(np.abs((y_test_asli - prediksi_test) / y_test_asli)) * 100
     metrik = {'MAE': mae, 'RMSE': rmse, 'MAPE': mape}
 
-    # Prediksi Masa Depan (seeding dari 60 hari terakhir seluruh data)
+    # Prediksi Masa Depan dari 60 hari terakhir
     last_60_days = scaled_data[-time_step:]
     current_batch = last_60_days.reshape(1, time_step, 1)
     prediksi_masa_depan = []
@@ -92,7 +92,7 @@ def pred_lstm(data_saham, hari_kedepan=90):
 
     # Menyiapkan DataFrame untuk Prediksi Masa Depan hari kerja
     tanggal_terakhir = df['Date'].iloc[-1]
-    # Menggunakan bdate_range agar otomatis melewati hari Sabtu & Minggu
+    # Menggunakan bdate_range otomatis melewati hari Sabtu & Minggu
     tanggal_masa_depan = pd.bdate_range(start=tanggal_terakhir + pd.Timedelta(days=1), periods=hari_kedepan)
     
     df_future = pd.DataFrame({
@@ -116,7 +116,7 @@ def pred_lstm(data_saham, hari_kedepan=90):
         name='Fitted Training (80%)', line_color='blue'
     ))
     
-    # Prediksi Test (prediksi pada data test — digunakan untuk evaluasi)
+    # Prediksi Test (digunakan untuk evaluasi)
     grafik.add_trace(go.Scatter(
         x=df['Date'].iloc[time_step + split_index:], 
         y=prediksi_test.flatten(), 
@@ -148,7 +148,7 @@ def pred_lstm(data_saham, hari_kedepan=90):
         template="plotly_white"
     )
     
-    # Tabel Pembuktian Historis — HANYA data TEST
+    # Tabel Pembuktian Historis
     df_historis = pd.DataFrame({
         'Tanggal': df['Date'].iloc[time_step + split_index:].values,
         'Harga Asli': y_test_asli.flatten(),
