@@ -553,6 +553,5 @@ scikit-learn
 pandas
 numpy<2.0.0
 plotly
-matplotlib
 ```
 
