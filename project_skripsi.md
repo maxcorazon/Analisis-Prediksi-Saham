@@ -113,7 +113,7 @@ with tab_prophet:
     
     # Memanggil model dengan spinner
     with st.spinner("Melatih model Prophet..."):
-        hasil_forecast, metrik_prophet, grafik_prophet, histori_prophet = cached_pred_prophet(data_saham, hari_prediksi)
+        hasil_forecast, metrik_prophet, grafik_prophet, histori_prophet, grafik_komponen = cached_pred_prophet(data_saham, hari_prediksi)
     
     st.plotly_chart(grafik_prophet, use_container_width=True)
     
@@ -122,6 +122,11 @@ with tab_prophet:
     kolom_metrik1.metric("MAE (Rata-rata Meleset)", f"Rp {metrik_prophet['MAE']:,.2f}")
     kolom_metrik2.metric("RMSE (Error Kuadrat)", f"Rp {metrik_prophet['RMSE']:,.2f}")
     kolom_metrik3.metric("MAPE (Persentase Error)", f"{metrik_prophet['MAPE']:.2f} %")
+    
+    # Komponen Prophet (Tren & Musiman)
+    with st.expander("Lihat Dekomposisi Komponen Prophet (Tren & Musiman)"):
+        st.write("Grafik ini membedah prediksi Prophet menjadi komponen pembentuknya: Tren jangka panjang, pola mingguan, dan pola tahunan. Ini membuktikan bahwa model mampu menangkap fluktuasi pasar.")
+        st.plotly_chart(grafik_komponen, use_container_width=True)
     
     # Tabel Pembuktian
     with st.expander("Tabel Pembuktian Matematis (Actual vs Prediksi) — Data Test"):
@@ -151,7 +156,7 @@ with tab_lstm:
     
     # Memanggil model dengan spinner
     with st.spinner("Melatih model LSTM... (memakan waktu beberapa menit)"):
-        hasil_future_lstm, metrik_lstm, grafik_lstm, histori_lstm = cached_pred_lstm(data_saham, hari_prediksi)
+        hasil_future_lstm, metrik_lstm, grafik_lstm, histori_lstm, grafik_loss_lstm = cached_pred_lstm(data_saham, hari_prediksi)
     
     st.plotly_chart(grafik_lstm, use_container_width=True)
     
@@ -160,6 +165,11 @@ with tab_lstm:
     kolom1_lstm.metric("MAE (Rata-rata Meleset)", f"Rp {metrik_lstm['MAE']:,.2f}")
     kolom2_lstm.metric("RMSE (Error Kuadrat)", f"Rp {metrik_lstm['RMSE']:,.2f}")
     kolom3_lstm.metric("MAPE (Persentase Error)", f"{metrik_lstm['MAPE']:.2f} %")
+    
+    # Kurva Pelatihan Model (Loss vs Epoch)
+    with st.expander("Lihat Kurva Pelatihan Model (Loss vs Epoch)"):
+        st.write("Grafik ini menunjukkan perbandingan nilai error pada data latih (Training Loss) dan data uji (Validation Loss) selama proses pelatihan model (Epoch). Penurunan yang stabil membuktikan bahwa model tidak mengalami *Overfitting* atau *Underfitting*.")
+        st.plotly_chart(grafik_loss_lstm, use_container_width=True)
     
     # Tabel Pembuktian
     with st.expander("Lihat Tabel Pembuktian Matematis (Actual vs Prediksi) — Data Test"):
@@ -245,9 +255,9 @@ def pred_lstm(data_saham, hari_kedepan=90):
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6)
 
     # Latih model dengan validation pada data test
-    model.fit(X_train, y_train, epochs=50, batch_size=32, 
-              validation_data=(X_test, y_test),
-              callbacks=[early_stop, reduce_lr], verbose=0)
+    history = model.fit(X_train, y_train, epochs=50, batch_size=32, 
+                        validation_data=(X_test, y_test),
+                        callbacks=[early_stop, reduce_lr], verbose=0)
 
     # Prediksi Data Test (Untuk Evaluasi)
     prediksi_test_scaled = model.predict(X_test, verbose=0)
@@ -341,7 +351,24 @@ def pred_lstm(data_saham, hari_kedepan=90):
         'Harga Prediksi LSTM': prediksi_test.flatten()
     })
     
-    return df_future, metrik, grafik, df_historis
+    # Grafik Learning Curve (Loss vs Validation Loss)
+    grafik_loss = go.Figure()
+    grafik_loss.add_trace(go.Scatter(
+        y=history.history['loss'], 
+        name='Training Loss', line_color='blue'
+    ))
+    grafik_loss.add_trace(go.Scatter(
+        y=history.history['val_loss'], 
+        name='Validation Loss', line_color='orange'
+    ))
+    grafik_loss.update_layout(
+        title='Kurva Pelatihan Model (Training vs Validation Loss)',
+        xaxis_title='Epoch',
+        yaxis_title='Mean Squared Error (Loss)',
+        template='plotly_white'
+    )
+    
+    return df_future, metrik, grafik, df_historis, grafik_loss
 ```
 
 ## 3. File: prediksi_prophet.py
@@ -349,6 +376,7 @@ def pred_lstm(data_saham, hari_kedepan=90):
 import pandas as pd
 import numpy as np
 from prophet import Prophet
+from prophet.plot import plot_components_plotly
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import plotly.graph_objects as go
 
@@ -540,7 +568,14 @@ def pred_prophet(data_saham, hari_kedepan=90):
     # Histori Test
     histori = prediksi_test[['ds', 'y', 'yhat']].copy()
     
-    return forecast_future, metrik, grafik, histori
+    # Grafik Komponen Prophet (Trend, Weekly, Yearly Seasonality)
+    grafik_komponen = plot_components_plotly(best_model, forecast)
+    grafik_komponen.update_layout(
+        title="Dekomposisi Komponen Model Prophet",
+        template="plotly_white"
+    )
+    
+    return forecast_future, metrik, grafik, histori, grafik_komponen
 ```
 
 ## 4. File: requirements.txt
@@ -555,3 +590,86 @@ numpy<2.0.0
 plotly
 ```
 
+## 5. File: EDA_Skripsi.py (Representasi Kode Jupyter Notebook)
+```python
+# Exploratory Data Analysis (EDA) - Skripsi
+# Notebook ini digunakan secara khusus untuk prapemrosesan data, pengecekan data kosong, 
+# pengecekan duplikat, statistika deskriptif, dan deteksi outlier.
+
+# 1. Import Library
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+
+# 2. Memuat Data
+df = pd.read_csv('bbca_cadangan.csv')
+df['Date'] = pd.to_datetime(df['Date'])
+print("Pratinjau Data (5 Baris Teratas):")
+print(df.head())
+
+# 3. Pengecekan Informasi dan Tipe Data
+print("\nInformasi Tipe Data:")
+df.info()
+
+# 4. Pengecekan Data Kosong (Missing Values)
+print("\nJumlah Data Kosong:")
+print(df.isnull().sum())
+
+# 5. Pengecekan Data Duplikat
+jumlah_duplikat = df.duplicated().sum()
+print(f"\nJumlah baris terduplikasi: {jumlah_duplikat}")
+
+# 6. Statistika Deskriptif
+print("\nStatistika Deskriptif:")
+print(df.describe())
+
+# 7. Visualisasi Tren Data Historis
+fig_trend = go.Figure()
+fig_trend.add_trace(go.Scatter(
+    x=df['Date'], 
+    y=df['Close'], 
+    name="Harga Penutupan (Close)", 
+    line_color='deepskyblue'
+))
+fig_trend.update_layout(
+    title="Grafik Historis Pergerakan Harga Saham BBCA (2016-2026)", 
+    xaxis_title="Tanggal",
+    yaxis_title="Harga (Rupiah)"
+)
+fig_trend.show()
+
+# 8. Visualisasi Pengecekan Outlier (Boxplot)
+fig_outlier = px.box(df, y='Close', title='Boxplot Harga Penutupan Saham BBCA (Deteksi Outlier)')
+fig_outlier.update_layout(yaxis_title="Harga (Rupiah)")
+fig_outlier.show()
+
+# 9. Simulasi Data Preparation (Khusus untuk Laporan Skripsi)
+print("--- TAHAPAN DATA PREPARATION ---\n")
+
+# A. Pemisahan Data (80% Latih, 20% Uji)
+total_data = len(df)
+train_size = int(total_data * 0.8)
+test_size = total_data - train_size
+print(f"1. Pemisahan Data (Data Splitting 80/20):")
+print(f"   - Total Keseluruhan Data : {total_data} baris")
+print(f"   - Total Data Latih (80%) : {train_size} baris (digunakan untuk training)")
+print(f"   - Total Data Uji (20%)   : {test_size} baris (digunakan untuk evaluasi/testing)\n")
+
+# B. Normalisasi Data untuk LSTM (MinMaxScaler)
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler(feature_range=(0, 1))
+data_close = df[['Close']].values
+scaled_data = scaler.fit_transform(data_close)
+print("2. Normalisasi Data untuk LSTM (MinMaxScaler):")
+print("   Tujuan: Mengubah skala ratusan ribu Rupiah menjadi angka rentang 0 hingga 1 agar LSTM lebih cepat belajar.")
+print("   - 5 Baris Awal Harga Asli (Rp) :", data_close[:5].flatten())
+print("   - 5 Baris Awal Harga Normalisasi :", scaled_data[:5].flatten(), "\n")
+
+# C. Penyesuaian Kolom untuk Facebook Prophet
+df_prophet = df[['Date', 'Close']].copy()
+df_prophet.rename(columns={'Date': 'ds', 'Close': 'y'}, inplace=True)
+print("3. Penyesuaian Format Kolom untuk Facebook Prophet:")
+print("   Tujuan: Menyesuaikan nama kolom sesuai dengan standar wajib algoritma Prophet.")
+print("   - Tampilan kolom setelah diubah (Date -> ds, Close -> y):")
+print(df_prophet.head())
+```

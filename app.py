@@ -107,7 +107,7 @@ with tab_prophet:
     
     # Memanggil model dengan spinner
     with st.spinner("Melatih model Prophet..."):
-        hasil_forecast, metrik_prophet, grafik_prophet, histori_prophet = cached_pred_prophet(data_saham, hari_prediksi)
+        hasil_forecast, metrik_prophet, grafik_prophet, histori_prophet, grafik_komponen = cached_pred_prophet(data_saham, hari_prediksi)
     
     st.plotly_chart(grafik_prophet, use_container_width=True)
     
@@ -116,6 +116,11 @@ with tab_prophet:
     kolom_metrik1.metric("MAE (Rata-rata Meleset)", f"Rp {metrik_prophet['MAE']:,.2f}")
     kolom_metrik2.metric("RMSE (Error Kuadrat)", f"Rp {metrik_prophet['RMSE']:,.2f}")
     kolom_metrik3.metric("MAPE (Persentase Error)", f"{metrik_prophet['MAPE']:.2f} %")
+    
+    # Komponen Prophet (Tren & Musiman)
+    with st.expander("Lihat Dekomposisi Komponen Prophet (Tren & Musiman)"):
+        st.write("Grafik ini membedah prediksi Prophet menjadi komponen pembentuknya: Tren jangka panjang, pola mingguan, dan pola tahunan. Ini membuktikan bahwa model mampu menangkap fluktuasi pasar.")
+        st.plotly_chart(grafik_komponen, use_container_width=True)
     
     # Tabel Pembuktian
     with st.expander("Tabel Pembuktian Matematis (Actual vs Prediksi) — Data Test"):
@@ -145,7 +150,7 @@ with tab_lstm:
     
     # Memanggil model dengan spinner
     with st.spinner("Melatih model LSTM... (memakan waktu beberapa menit)"):
-        hasil_future_lstm, metrik_lstm, grafik_lstm, histori_lstm = cached_pred_lstm(data_saham, hari_prediksi)
+        hasil_future_lstm, metrik_lstm, grafik_lstm, histori_lstm, grafik_loss_lstm = cached_pred_lstm(data_saham, hari_prediksi)
     
     st.plotly_chart(grafik_lstm, use_container_width=True)
     
@@ -154,6 +159,11 @@ with tab_lstm:
     kolom1_lstm.metric("MAE (Rata-rata Meleset)", f"Rp {metrik_lstm['MAE']:,.2f}")
     kolom2_lstm.metric("RMSE (Error Kuadrat)", f"Rp {metrik_lstm['RMSE']:,.2f}")
     kolom3_lstm.metric("MAPE (Persentase Error)", f"{metrik_lstm['MAPE']:.2f} %")
+    
+    # Kurva Pelatihan Model (Loss vs Epoch)
+    with st.expander("Lihat Kurva Pelatihan Model (Loss vs Epoch)"):
+        st.write("Grafik ini menunjukkan perbandingan nilai error pada data latih (Training Loss) dan data uji (Validation Loss) selama proses pelatihan model (Epoch). Penurunan yang stabil membuktikan bahwa model tidak mengalami *Overfitting* atau *Underfitting*.")
+        st.plotly_chart(grafik_loss_lstm, use_container_width=True)
     
     # Tabel Pembuktian
     with st.expander("Lihat Tabel Pembuktian Matematis (Actual vs Prediksi) — Data Test"):

@@ -59,9 +59,9 @@ def pred_lstm(data_saham, hari_kedepan=90):
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6)
 
     # Latih model dengan validation pada data test
-    model.fit(X_train, y_train, epochs=50, batch_size=32, 
-              validation_data=(X_test, y_test),
-              callbacks=[early_stop, reduce_lr], verbose=0)
+    history = model.fit(X_train, y_train, epochs=50, batch_size=32, 
+                        validation_data=(X_test, y_test),
+                        callbacks=[early_stop, reduce_lr], verbose=0)
 
     # Prediksi Data Test (Untuk Evaluasi)
     prediksi_test_scaled = model.predict(X_test, verbose=0)
@@ -155,4 +155,21 @@ def pred_lstm(data_saham, hari_kedepan=90):
         'Harga Prediksi LSTM': prediksi_test.flatten()
     })
     
-    return df_future, metrik, grafik, df_historis
+    # Grafik Learning Curve (Loss vs Validation Loss)
+    grafik_loss = go.Figure()
+    grafik_loss.add_trace(go.Scatter(
+        y=history.history['loss'], 
+        name='Training Loss', line_color='blue'
+    ))
+    grafik_loss.add_trace(go.Scatter(
+        y=history.history['val_loss'], 
+        name='Validation Loss', line_color='orange'
+    ))
+    grafik_loss.update_layout(
+        title='Kurva Pelatihan Model (Training vs Validation Loss)',
+        xaxis_title='Epoch',
+        yaxis_title='Mean Squared Error (Loss)',
+        template='plotly_white'
+    )
+    
+    return df_future, metrik, grafik, df_historis, grafik_loss

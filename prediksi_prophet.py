@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from prophet import Prophet
+from prophet.plot import plot_components_plotly
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import plotly.graph_objects as go
 
@@ -192,4 +193,11 @@ def pred_prophet(data_saham, hari_kedepan=90):
     # Histori Test
     histori = prediksi_test[['ds', 'y', 'yhat']].copy()
     
-    return forecast_future, metrik, grafik, histori
+    # Grafik Komponen Prophet (Trend, Weekly, Yearly Seasonality)
+    grafik_komponen = plot_components_plotly(best_model, forecast)
+    grafik_komponen.update_layout(
+        title="Dekomposisi Komponen Model Prophet",
+        template="plotly_white"
+    )
+    
+    return forecast_future, metrik, grafik, histori, grafik_komponen
