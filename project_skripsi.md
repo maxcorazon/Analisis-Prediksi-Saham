@@ -65,6 +65,17 @@ def ambil_data_saham(kode, waktu_mulai, waktu_akhir):
             data_csv = pd.read_csv("bbca_cadangan.csv")
             data_csv['Date'] = pd.to_datetime(data_csv['Date'])
             return data_csv
+        else:
+            # Unduh otomatis dari GitHub jika file lokal hilang
+            try:
+                url_github = "https://raw.githubusercontent.com/maxcorazon/Analisis-Prediksi-Saham/main/bbca_cadangan.csv"
+                data_csv = pd.read_csv(url_github)
+                data_csv['Date'] = pd.to_datetime(data_csv['Date'])
+                # Simpan lokal agar tidak mengunduh ulang di masa depan
+                data_csv.to_csv("bbca_cadangan.csv", index=False)
+                return data_csv
+            except Exception:
+                return pd.DataFrame()
         return pd.DataFrame()
 
 # Menjalankan fungsi pengambilan data
@@ -590,7 +601,7 @@ numpy<2.0.0
 plotly
 ```
 
-## 5. File: EDA_Skripsi.py (Representasi Kode Jupyter Notebook)
+## 5. File: EDA_Skripsi.ipynb (Representasi Kode Jupyter Notebook)
 ```python
 # Exploratory Data Analysis (EDA) - Skripsi
 # Notebook ini digunakan secara khusus untuk prapemrosesan data, pengecekan data kosong, 
