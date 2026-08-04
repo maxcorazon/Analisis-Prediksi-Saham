@@ -18,6 +18,14 @@ __pycache__/
 .env
 .streamlit/secrets.toml
 
-# Dokumen besar (tidak diperlukan untuk deployment)
+# Dokumen besar / dokumentasi internal (tidak diperlukan untuk deployment)
 pedoman_penulisan.pdf
 hasil_konversi/
+project_skripsi.md
+inspect_prophet_holidays.py
+rangkuman_perubahan_skripsi.md
+test_prophet_init0.py
+test_single_run.py
+test_subprocesses.py
+test_why_2020_zero.py
+

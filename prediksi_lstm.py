@@ -10,12 +10,13 @@ from tensorflow.keras.optimizers import Adam
 import plotly.graph_objects as go
 
 def pred_lstm(data_saham, hari_kedepan=90):
-    # Set random seed untuk hasil konsisten setiap kali dijalankan
     np.random.seed(42)
     tf.random.set_seed(42)
+    tf.config.experimental.enable_op_determinism()
 
     # Persiapan & Normalisasi Data
     df = data_saham[['Date', 'Close']].copy()
+    df['Close'] = df['Close'].round(2)
     data_close = df['Close'].values.reshape(-1, 1)
 
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -36,19 +37,36 @@ def pred_lstm(data_saham, hari_kedepan=90):
     X_train, X_test = X[:split_index], X[split_index:]
     y_train, y_test = y[:split_index], y[split_index:]
 
-    # Membangun Model LSTM Deep Learning dengan Bidirectional & Dropout 
+    # Print Pembuktian 
+    print("\nBukti Tabel MinMaxScaler")
+    df_bukti_scaler = pd.DataFrame({
+        'Tanggal': df['Date'].iloc[:5],
+        'Harga Penutupan Asli (Rp)': data_close[:5].flatten(),
+        'Harga Hasil Skalasi (Scaled)': scaled_data[:5].flatten()
+    })
+    print(df_bukti_scaler.to_string(index=False))
+    
+    print("\nBukti Tensor Shape LSTM")
+    print(f"Dimensi X_train (Data Latih) : {X_train.shape}")
+    print(f"Dimensi y_train (Target Latih) : {y_train.shape}")
+    print(f"Dimensi X_test (Data Uji)  : {X_test.shape}")
+    print(f"Dimensi y_test (Target Uji)  : {y_test.shape}")
+    print("")
+
+    # Membangun Model LSTM dengan Bidirectional & Dropout 
     model = Sequential()
     
     # Layer 1: Bidirectional LSTM + Dropout (Membaca pola dari dua arah)
     model.add(Bidirectional(LSTM(units=50, return_sequences=True), input_shape=(X.shape[1], 1)))
-    model.add(Dropout(0.2)) # Membuang data 20% agar tidak terjadi overfitting
+    model.add(Dropout(0.2))
     
-    # Layer 2: LSTM + Dropout (Memperdalam Model)
+    # Layer 2: LSTM + Dropout
     model.add(LSTM(units=50, return_sequences=False))
-    model.add(Dropout(0.2)) # Membuang data 20% agar tidak terjadi overfitting
+    model.add(Dropout(0.2))
     
     # Layer Output: Menebak 1 harga
     model.add(Dense(units=1))
+    model.summary()
 
     # Kompilasi Model dengan Optimizer Adam dan Loss MSE
     optimizer = Adam(learning_rate=0.001)
@@ -62,6 +80,12 @@ def pred_lstm(data_saham, hari_kedepan=90):
     history = model.fit(X_train, y_train, epochs=50, batch_size=32, 
                         validation_data=(X_test, y_test),
                         callbacks=[early_stop, reduce_lr], verbose=0)
+
+    print(f"\nJumlah epoch yang benar-benar dijalankan: {len(history.history['loss'])} dari maksimal 50")
+    if len(history.history['loss']) < 50:
+        print("Early Stopping aktif — pelatihan berhenti lebih awal.")
+    else:
+        print("Early Stopping tidak terpicu — pelatihan selesai hingga epoch maksimal.")
 
     # Prediksi Data Test (Untuk Evaluasi)
     prediksi_test_scaled = model.predict(X_test, verbose=0)
@@ -90,9 +114,9 @@ def pred_lstm(data_saham, hari_kedepan=90):
 
     prediksi_masa_depan = scaler.inverse_transform(np.array(prediksi_masa_depan).reshape(-1, 1))
 
-    # Menyiapkan DataFrame untuk Prediksi Masa Depan hari kerja
+    # Menyiapkan DataFrame untuk Prediksi Masa Depan
     tanggal_terakhir = df['Date'].iloc[-1]
-    # Menggunakan bdate_range otomatis melewati hari Sabtu & Minggu
+    # Menggunakan bdate_range agar hanya bussines day saja
     tanggal_masa_depan = pd.bdate_range(start=tanggal_terakhir + pd.Timedelta(days=1), periods=hari_kedepan)
     
     df_future = pd.DataFrame({
