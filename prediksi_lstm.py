@@ -121,7 +121,7 @@ def pred_lstm(data_saham, hari_kedepan=90):
     
     df_future = pd.DataFrame({
         'Tanggal': tanggal_masa_depan,
-        'Prediksi Harga': prediksi_masa_depan.flatten()
+        'Prediksi Harga': prediksi_masa_depan.flatten().astype(float).round(2)
     })
 
     # Visualisasi Grafik 
@@ -175,8 +175,8 @@ def pred_lstm(data_saham, hari_kedepan=90):
     # Tabel Pembuktian Historis
     df_historis = pd.DataFrame({
         'Tanggal': df['Date'].iloc[time_step + split_index:].values,
-        'Harga Asli': y_test_asli.flatten(),
-        'Harga Prediksi LSTM': prediksi_test.flatten()
+        'Harga Asli': y_test_asli.flatten().astype(float).round(2),
+        'Harga Prediksi LSTM': prediksi_test.flatten().astype(float).round(2)
     })
     
     # Grafik Learning Curve (Loss vs Validation Loss)

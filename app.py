@@ -160,7 +160,7 @@ with tab_prophet:
         st.download_button("Download Data Pembuktian (CSV)", csv_prophet, "pembuktian_matematis_prophet.csv", "text/csv")
         
     st.subheader("Tabel Prediksi Harga Mendatang")
-    tabel_masa_depan = hasil_forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(10)
+    tabel_masa_depan = hasil_forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(20)
     tabel_masa_depan.columns = ['Tanggal', 'Prediksi Harga', 'Batas Bawah', 'Batas Atas']
     tabel_masa_depan[['Prediksi Harga', 'Batas Bawah', 'Batas Atas']] = tabel_masa_depan[['Prediksi Harga', 'Batas Bawah', 'Batas Atas']].round(2)
     st.dataframe(tabel_masa_depan, hide_index=True)
@@ -198,7 +198,8 @@ with tab_lstm:
         df_prov_lstm['Persentase Error (%)'] = (df_prov_lstm['Error Mutlak (MAE)'] / df_prov_lstm['Harga Asli']) * 100
         
         cols_l = ['Harga Asli', 'Harga Prediksi LSTM', 'Selisih (Error)', 'Error Mutlak (MAE)', 'Error Kuadrat (RMSE)', 'Persentase Error (%)']
-        df_prov_lstm[cols_l] = df_prov_lstm[cols_l].round(2)
+        for c in cols_l:
+            df_prov_lstm[c] = df_prov_lstm[c].astype(float).round(2)
         
         st.dataframe(df_prov_lstm.tail(20), hide_index=True)
         
@@ -208,5 +209,5 @@ with tab_lstm:
     st.subheader("Tabel Prediksi Harga Mendatang")
     tbl_future_lstm = hasil_future_lstm.copy()
     if 'Prediksi Harga' in tbl_future_lstm.columns:
-        tbl_future_lstm['Prediksi Harga'] = tbl_future_lstm['Prediksi Harga'].round(2)
-    st.dataframe(tbl_future_lstm.tail(10), hide_index=True)
+        tbl_future_lstm['Prediksi Harga'] = tbl_future_lstm['Prediksi Harga'].astype(float).round(2)
+    st.dataframe(tbl_future_lstm.tail(20), hide_index=True)
